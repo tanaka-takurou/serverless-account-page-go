@@ -1,0 +1,192 @@
+{{define "main.css"}}<style type="text/css">
+body {
+  background-color: #EEE;
+}
+body > .grid {
+  height: 100%;
+}
+.image {
+  margin-top: -100px;
+}
+.column {
+  max-width: 450px;
+}
+</style>{{end}}
+{{define "main.js"}}
+<script type="text/javascript">
+$(document).ready(function() {
+  var
+    $headers     = $('body > div > div > h2'),
+    $header      = $headers.first(),
+    ignoreScroll = false,
+    timer;
+
+  $(window)
+    .on('resize', function() {
+      clearTimeout(timer);
+      $headers.visibility('disable callbacks');
+
+      $(document).scrollTop( $header.offset().top );
+
+      timer = setTimeout(function() {
+        $headers.visibility('enable callbacks');
+      }, 500);
+    });
+  $headers
+    .visibility({
+      once: false,
+      checkOnRefresh: true,
+      onTopPassed: function() {
+        $header = $(this);
+      },
+      onTopPassedReverse: function() {
+        $header = $(this);
+      }
+    });
+  let params = new URLSearchParams(document.location.search.substring(1));
+  let page = params.get("page");
+  if (page == "profile") {
+    getuser();
+  } else if (page == "logout") {
+    logout();
+  }
+});
+
+var login = function() {
+  $("#submit").addClass('disabled');
+  var name = $("#nickName").val();
+  var pass = $('#password').val();
+  if (!name | !pass) {
+    return false;
+  }
+  const action = "login";
+  const data = {action, name, pass};
+  request(data, (res)=>{
+    window.localStorage.setItem("accessToken", res.token);
+    window.setTimeout(() => {location.href = "/?page=profile";}, 1000);
+  }, onError);
+};
+
+var changepass = function() {
+  var token = window.localStorage.getItem("accessToken");
+  if (!token) {
+    return false;
+  }
+  if (!checkPass($("#newpassword").val())) {
+    $("#newpassword").val('');
+    $("#passwarning").removeClass("hidden").addClass("visible");
+    return
+  }
+  $("#submit").addClass('disabled');
+  var pass = $('#password').val();
+  var newpass = $('#newpassword').val();
+  if (!token | !pass | !newpass) {
+    return false;
+  }
+  const action = "changepass";
+  const data = {action, token, pass, newpass};
+  request(data, (res)=>{
+    console.log(res);
+    $("#info").removeClass("hidden").addClass("visible");
+  }, onError);
+};
+
+var signup = function() {
+  if (!checkPass($("#password").val())) {
+    $("#password").val('');
+    $("#passwarning").removeClass("hidden").addClass("visible");
+    return
+  }
+  $("#submit").addClass('disabled');
+  var mail = $("#email").val();
+  var name = $("#nickName").val();
+  var pass = $("#password").val();
+  if (!mail | !name | !pass) {
+    return false;
+  }
+  const action = "signup";
+  const data = {action, mail, name, pass};
+  request(data, (res)=>{
+    console.log(res);
+    $("#info").removeClass("hidden").addClass("visible");
+  }, onError);
+};
+
+var activate = function() {
+  $("#submit").addClass('disabled');
+  var name = $("#nickName").val();
+  var code = $("#activationKey").val();
+  if (!name | !code) {
+      return false;
+  }
+  const action = "confirmsignup";
+  const data = {action, name, code};
+  request(data, (res)=>{
+    console.log(res);
+    $("#info").removeClass("hidden").addClass("visible");
+  }, onError);
+};
+
+var getuser = function() {
+  var token = window.localStorage.getItem("accessToken");
+  if (!token) {
+    $("#settings").addClass("hidden");
+    $("#warning").text("You are not logged in yet.").removeClass("hidden").addClass("visible");
+    return false;
+  }
+  const action = "getuser";
+  const data = {action, token};
+  request(data, (res)=>{
+    console.log(res);
+    $("#name").text(res.name);
+  }, onError);
+};
+
+var logout = function() {
+  var token = window.localStorage.getItem("accessToken");
+  if (!token) {
+    return false;
+  }
+  const action = "logout";
+  const data = {action, token};
+  request(data, (res)=>{
+    console.log(res);
+    window.localStorage.setItem("accessToken", "");
+    console.log("return to top");
+  }, onError);
+};
+
+var request = function(data, callback, onerror) {
+  $.ajax({
+    type:          'POST',
+    dataType:      'json',
+    contentType:   'application/json',
+    scriptCharset: 'utf-8',
+    data:          JSON.stringify(data),
+    url:           {{ .Api }}
+  })
+  .done(function(res) {
+    callback(res);
+  })
+  .fail(function(e) {
+    onerror(e);
+  });
+};
+
+var checkPass = function(s) {
+  const ra = new RegExp(/[0-9]+/);
+  const rb = new RegExp(/[a-z]+/);
+  const rc = new RegExp(/[A-Z]+/);
+  const rd = new RegExp(/[#\\(\\)_\\-\\@\\%\\#\\&\\$\\^\\*]+/);
+  return s.length > 7 && ra.test(s) && rb.test(s) && rc.test(s) && rd.test(s)
+};
+
+var onError = function(e) {
+  console.log(e.responseJSON.message);
+  $("#warning").text(e.responseJSON.message).removeClass("hidden").addClass("visible");
+  $("#submit").removeClass('disabled');
+};
+
+</script>
+{{end}}
+{{define "favicon.ico"}}data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoAwAAFgAAACgAAAAQAAAAIAAAAAEAGAAAAAAAAAAAABMLAAATCwAAAAAAAAAAAAD/5tX/6tf/7dn/7Nj/59X/5tT/6db/7Nn/7Nn/6db/5tT/59X/7Nj/7dn/6tf/59X/69j/s6//hJH/lpz/38//7Nn/zcL/iZT/iJP/y8D/7Nn/4ND/mZ7/hJH/sK3/6tf/7dr/i5X/AEv/M2z/3c7/8t3/wLn/AFT/AFL/u7X/8t3/4ND/QHD/AEv/hJH/7Nn/7Nn/nqH/P3D/aoL/1Mf/5dP/vbf/TnX/S3T/urT/5dT/1sj/boT/QHD/mJ3/7Nj/59X/4tH/4dH/2sv/aYL/NWz/kpr/49L/5NP/l53/NWz/ZH//2Mr/4tH/4dH/59X/59X/59X/69j/4dH/QHD/AEv/hpL/7dn/7tr/jZb/AEv/M2z/38//69j/59X/59X/59X/5tT/59X/4tH/nqH/jJX/s6//6db/6df/trH/jJX/nKD/4ND/6Nb/5tT/59X/59X/5tT/5dT/5tT/69j/7Nn/6tf/59X/59X/6tf/7Nn/69j/5tT/5dT/5tT/59X/5tX/6tf/7dn/7Nn/69j/69j/6tf/59X/59X/6df/69j/69j/7Nn/7Nn/6tj/59X/69j/s6//hpL/kZn/j5j/hZL/r6z/6df/6tf/sq//hZH/kJj/kJj/h5P/r63/6tf/7dr/ipX/AE//AGP/EGX/AFX/hZL/69j/7Nn/jJb/AFT/F2b/AGL/AFD/gpD/7Nn/7Nn/naD/RXL/Xnz/SnP/FWb/kJj/6tj/7Nj/lpz/DGX/SnT/XXz/SHP/l53/7Nj/59X/4tH/4dH/2sv/Xnz/AGP/kZn/6tj/7Nj/lpz/AGL/WHn/18n/4tH/4dH/59X/59X/59X/69j/4dH/RXL/AE//hpL/69j/7Nn/jZb/AE//O27/38//69j/59X/59X/59X/5tT/59X/4tH/naD/ipX/s6//6df/6tf/trH/ipX/m5//4ND/6Nb/5tT/59X/59X/59X/59X/59X/7Nn/7dn/69j/59X/5tX/69j/7dr/7Nn/59X/59X/59X/59UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA{{end}}
