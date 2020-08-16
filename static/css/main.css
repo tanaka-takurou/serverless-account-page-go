@@ -10,3 +10,11 @@ body > .grid {
 .column {
   max-width: 450px;
 }
+#thumbnail {
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+}
+#imgChangeButton {
+  margin-top: 1rem;
+}

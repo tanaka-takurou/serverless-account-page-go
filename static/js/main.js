@@ -1,32 +1,4 @@
 $(document).ready(function() {
-  var
-    $headers     = $('body > div > div > h2'),
-    $header      = $headers.first(),
-    ignoreScroll = false,
-    timer;
-
-  $(window)
-    .on('resize', function() {
-      clearTimeout(timer);
-      $headers.visibility('disable callbacks');
-
-      $(document).scrollTop( $header.offset().top );
-
-      timer = setTimeout(function() {
-        $headers.visibility('enable callbacks');
-      }, 500);
-    });
-  $headers
-    .visibility({
-      once: false,
-      checkOnRefresh: true,
-      onTopPassed: function() {
-        $header = $(this);
-      },
-      onTopPassedReverse: function() {
-        $header = $(this);
-      }
-    });
   let params = new URLSearchParams(document.location.search.substring(1));
   let page = params.get("page");
   if (page == "profile") {
@@ -47,7 +19,7 @@ var login = function() {
   const data = {action, name, pass};
   request(data, (res)=>{
     window.localStorage.setItem("accessToken", res.token);
-    window.setTimeout(() => {location.href = "/?page=profile";}, 1000);
+    window.setTimeout(() => {location.href = "./?page=profile";}, 1000);
   }, onError);
 };
 
@@ -123,6 +95,7 @@ var getuser = function() {
   request(data, (res)=>{
     console.log(res);
     $("#name").text(res.name);
+    SetImgUrl();
   }, onError);
 };
 
@@ -147,7 +120,7 @@ var request = function(data, callback, onerror) {
     contentType:   'application/json',
     scriptCharset: 'utf-8',
     data:          JSON.stringify(data),
-    url:           {{ .Api }}
+    url:           App.url
   })
   .done(function(res) {
     callback(res);
@@ -170,3 +143,104 @@ var onError = function(e) {
   $("#warning").text(e.responseJSON.message).removeClass("hidden").addClass("visible");
   $("#submit").removeClass('disabled');
 };
+function SetImgUrl() {
+  if (App.imgUrl.length <= 0) {
+    GetImgUrl();
+  } else {
+    $("#thumbnail").attr("src", App.imgUrl);
+  }
+}
+function GetImgUrl() {
+  var token = window.localStorage.getItem("accessToken");
+  if (!token) {
+    return false;
+  }
+  const data = {action: 'getimg', token: token};
+  $.ajax({
+    type:          'POST',
+    dataType:      'json',
+    contentType:   'application/json',
+    scriptCharset: 'utf-8',
+    data:          JSON.stringify(data),
+    url:           App.url
+  })
+  .done(function(res) {
+    App.imgUrl = res.imgurl;
+    if (App.imgUrl.length > 0) {
+      $("#thumbnail").attr("src", App.imgUrl);
+    } else {
+      $("#thumbnail").attr("src", '{{template "default.jpg" .}}');
+    }
+  })
+  .fail(function(e) {
+    console.log(e);
+  });
+}
+function OpenModal() {
+  $('.large.modal').modal('show');
+}
+function CloseModal() {
+  $('.large.modal').modal('hide');
+}
+function parseJson (data) {
+  var res = {};
+  for (i = 0; i < data.length; i++) {
+    res[data[i].name] = data[i].value;
+  }
+  return res;
+}
+function toBase64 (file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+}
+function onConverted () {
+  return function(v) {
+    App.imgdata = v;
+    $('#preview').attr('src', v);
+  }
+}
+function UploadImage(elm) {
+  if (!!App.imgdata) {
+    $(elm).addClass("disabled");
+    putImage();
+  } else {
+    CloseModal();
+  }
+}
+function putImage() {
+  var token = window.localStorage.getItem("accessToken");
+  if (!token) {
+    return false;
+  }
+  const file = $('#image').prop('files')[0];
+  const data = {action: 'uploadimg', filename: file.name, filedata: App.imgdata, token: token};
+  $.ajax({
+    type:          'POST',
+    dataType:      'json',
+    contentType:   'application/json',
+    scriptCharset: 'utf-8',
+    data:          JSON.stringify(data),
+    url:           App.url
+  })
+  .done(function(res) {
+    App.imgUrl = res.imgurl;
+    if (App.imgUrl.length > 0) {
+      $("#thumbnail").attr("src", App.imgUrl);
+    }
+  })
+  .fail(function(e) {
+    console.log(e);
+  })
+  .always(function() {
+    CloseModal();
+  });
+}
+function ChangeImage () {
+  const file = $('#image').prop('files')[0];
+  toBase64(file).then(onConverted());
+}
+var App = { imgdata: null, url: location.origin + {{ .ApiPath }}, imgUrl: '' };
