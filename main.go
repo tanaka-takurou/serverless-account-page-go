@@ -2,27 +2,23 @@ package main
 
 import (
 	"io"
+	"os"
 	"log"
 	"bytes"
 	"context"
-	"io/ioutil"
 	"html/template"
-	"encoding/json"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
 type PageData struct {
-	Title string
-	Api   string
-}
-
-type ConstantData struct {
-	Title string `json:"title"`
-	Api   string `json:"api"`
+	Title   string
+	ApiPath string
 }
 
 type Response events.APIGatewayProxyResponse
+
+const title string = "Sample Account Page"
 
 func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (Response, error) {
 	tmp := template.New("tmp")
@@ -38,11 +34,8 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	}
 	buf := new(bytes.Buffer)
 	fw := io.Writer(buf)
-	jsonString, _ := ioutil.ReadFile("constant/constant.json")
-	constant := new(ConstantData)
-	json.Unmarshal(jsonString, constant)
-	dat.Title = constant.Title
-	dat.Api = constant.Api
+	dat.Title = title
+	dat.ApiPath = os.Getenv("API_PATH")
 	if page == "signup" {
 		tmp = template.Must(template.New("").Funcs(funcMap).ParseFiles("templates/index.html", "templates/view.html", "templates/header.html", "templates/signup.html", "templates/passwarning.html"))
 	} else if page == "activation" {
@@ -56,8 +49,6 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	}
 	if e := tmp.ExecuteTemplate(fw, "base", dat); e != nil {
 		log.Fatal(e)
-	} else {
-		log.Print("Event received.")
 	}
 	res := Response{
 		StatusCode:      200,
