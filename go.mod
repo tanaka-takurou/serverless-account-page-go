@@ -1,4 +1,4 @@
-module github.com/tanaka-takurou/serverless-message-board-go
+module github.com/tanaka-takurou/serverless-account-page-go
 
 go 1.15
 
