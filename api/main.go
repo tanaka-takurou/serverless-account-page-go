@@ -264,11 +264,11 @@ func confirmSignup(ctx context.Context, name string, confirmationCode string) er
 	return err
 }
 
-func scan(ctx context.Context, tableName string, filt expression.ConditionBuilder)(*dynamodb.ScanOutput, error)  {
+func scan(ctx context.Context, tableName string, filt expression.ConditionBuilder, proj expression.ProjectionBuilder)(*dynamodb.ScanOutput, error)  {
 	if dynamodbClient == nil {
 		dynamodbClient = dynamodb.New(cfg)
 	}
-	expr, err := expression.NewBuilder().WithFilter(filt).Build()
+	expr, err := expression.NewBuilder().WithFilter(filt).WithProjection(proj).Build()
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,9 @@ func update(ctx context.Context, tableName string, an map[string]string, av map[
 }
 
 func getImgCount(ctx context.Context, imgTableName string)(*int64, error)  {
-	result, err := scan(ctx, imgTableName, expression.NotEqual(expression.Name("status"), expression.Value(-1)))
+	filt := expression.NotEqual(expression.Name("status"), expression.Value(-1))
+	proj := expression.NamesList(expression.Name("img_id"), expression.Name("status"), expression.Name("url"), expression.Name("updated"))
+	result, err := scan(ctx, imgTableName, filt, proj)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +350,9 @@ func putImg(ctx context.Context, imgTableName string, url string, name string) e
 }
 
 func getImage(ctx context.Context, imgTableName string, username string)(string, error) {
-	result, err := scan(ctx, imgTableName, expression.Name("name").Equal(expression.Value(username)))
+	filt := expression.Equal(expression.Name("name"), expression.Value(username))
+	proj := expression.NamesList(expression.Name("img_id"), expression.Name("status"), expression.Name("url"), expression.Name("updated"))
+	result, err := scan(ctx, imgTableName, filt, proj)
 	if err != nil {
 		log.Print(err)
 		return "", err
