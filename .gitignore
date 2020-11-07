@@ -5,6 +5,7 @@
 *.dylib
 
 packaged.yml
+go.sum
 
 out.json
 
