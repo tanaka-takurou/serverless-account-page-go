@@ -17,13 +17,16 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/expression"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/dynamodbattribute"
+	dynamodbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	s3manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	cognitotypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
 
 type UserResponse struct {
@@ -37,16 +40,15 @@ type ErrorResponse struct {
 }
 
 type ImgData struct {
-	Img_Id  int    `json:"img_id"`
-	Name    string `json:"name"`
-	Status  int    `json:"status"`
-	Url     string `json:"url"`
-	Updated string `json:"updated"`
+	Img_Id  int    `dynamodbav:"img_id"`
+	Name    string `dynamodbav:"name"`
+	Status  int    `dynamodbav:"status"`
+	Url     string `dynamodbav:"url"`
+	Updated string `dynamodbav:"updated"`
 }
 
 type Response events.APIGatewayProxyResponse
 
-var cfg aws.Config
 var dynamodbClient *dynamodb.Client
 var cognitoClient *cognitoidentityprovider.Client
 
@@ -158,11 +160,11 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 
 func login(ctx context.Context, name string, pass string)(string, error) {
 	if cognitoClient == nil {
-		cognitoClient = cognitoidentityprovider.New(cfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(getConfig(ctx))
 	}
 
 	input := &cognitoidentityprovider.InitiateAuthInput{
-		AuthFlow: cognitoidentityprovider.AuthFlowTypeUserPasswordAuth,
+		AuthFlow: cognitotypes.AuthFlowTypeUserPasswordAuth,
 		AuthParameters: map[string]string{
 			"USERNAME": name,
 			"PASSWORD": pass,
@@ -170,34 +172,32 @@ func login(ctx context.Context, name string, pass string)(string, error) {
 		ClientId: aws.String(os.Getenv("CLIENT_ID")),
 	}
 
-	req := cognitoClient.InitiateAuthRequest(input)
-	res, err := req.Send(ctx)
+	res, err := cognitoClient.InitiateAuth(ctx, input)
 	if err != nil {
 		return "", err
 	}
-	return aws.StringValue(res.InitiateAuthOutput.AuthenticationResult.AccessToken), nil
+	return aws.ToString(res.AuthenticationResult.AccessToken), nil
 }
 
 func getuser(ctx context.Context, token string)(string, error) {
 	if cognitoClient == nil {
-		cognitoClient = cognitoidentityprovider.New(cfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(getConfig(ctx))
 	}
 
 	input := &cognitoidentityprovider.GetUserInput{
 		AccessToken: aws.String(token),
 	}
 
-	req := cognitoClient.GetUserRequest(input)
-	res, err := req.Send(ctx)
+	res, err := cognitoClient.GetUser(ctx, input)
 	if err != nil {
 		return "", err
 	}
-	return aws.StringValue(res.GetUserOutput.Username), nil
+	return aws.ToString(res.Username), nil
 }
 
 func changePass(ctx context.Context, token string, pass string, newPass string) error {
 	if cognitoClient == nil {
-		cognitoClient = cognitoidentityprovider.New(cfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(getConfig(ctx))
 	}
 
 	input := &cognitoidentityprovider.ChangePasswordInput{
@@ -206,31 +206,29 @@ func changePass(ctx context.Context, token string, pass string, newPass string) 
 		ProposedPassword: aws.String(newPass),
 	}
 
-	req := cognitoClient.ChangePasswordRequest(input)
-	_, err := req.Send(ctx)
+	_, err := cognitoClient.ChangePassword(ctx, input)
 	return err
 }
 
 func logout(ctx context.Context, token string) error {
 	if cognitoClient == nil {
-		cognitoClient = cognitoidentityprovider.New(cfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(getConfig(ctx))
 	}
 
 	input := &cognitoidentityprovider.GlobalSignOutInput{
 		AccessToken: aws.String(token),
 	}
 
-	req := cognitoClient.GlobalSignOutRequest(input)
-	_, err := req.Send(ctx)
+	_, err := cognitoClient.GlobalSignOut(ctx, input)
 	return err
 }
 
 func signup(ctx context.Context, name string, pass string, mail string) error {
 	if cognitoClient == nil {
-		cognitoClient = cognitoidentityprovider.New(cfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(getConfig(ctx))
 	}
 
-	ua := &cognitoidentityprovider.AttributeType {
+	ua := &cognitotypes.AttributeType {
 		Name: aws.String("email"),
 		Value: aws.String(mail),
 	}
@@ -238,19 +236,18 @@ func signup(ctx context.Context, name string, pass string, mail string) error {
 		Username: aws.String(name),
 		Password: aws.String(pass),
 		ClientId: aws.String(os.Getenv("CLIENT_ID")),
-		UserAttributes: []cognitoidentityprovider.AttributeType{
+		UserAttributes: []cognitotypes.AttributeType{
 			*ua,
 		},
 	}
 
-	req := cognitoClient.SignUpRequest(input)
-	_, err := req.Send(ctx)
+	_, err := cognitoClient.SignUp(ctx, input)
 	return err
 }
 
 func confirmSignup(ctx context.Context, name string, confirmationCode string) error {
 	if cognitoClient == nil {
-		cognitoClient = cognitoidentityprovider.New(cfg)
+		cognitoClient = cognitoidentityprovider.NewFromConfig(getConfig(ctx))
 	}
 
 	input := &cognitoidentityprovider.ConfirmSignUpInput{
@@ -259,14 +256,13 @@ func confirmSignup(ctx context.Context, name string, confirmationCode string) er
 		ClientId: aws.String(os.Getenv("CLIENT_ID")),
 	}
 
-	req := cognitoClient.ConfirmSignUpRequest(input)
-	_, err := req.Send(ctx)
+	_, err := cognitoClient.ConfirmSignUp(ctx, input)
 	return err
 }
 
 func scan(ctx context.Context, tableName string, filt expression.ConditionBuilder, proj expression.ProjectionBuilder)(*dynamodb.ScanOutput, error)  {
 	if dynamodbClient == nil {
-		dynamodbClient = dynamodb.New(cfg)
+		dynamodbClient = dynamodb.NewFromConfig(getConfig(ctx))
 	}
 	expr, err := expression.NewBuilder().WithFilter(filt).WithProjection(proj).Build()
 	if err != nil {
@@ -279,48 +275,45 @@ func scan(ctx context.Context, tableName string, filt expression.ConditionBuilde
 		ProjectionExpression:      expr.Projection(),
 		TableName:                 aws.String(tableName),
 	}
-	req := dynamodbClient.ScanRequest(input)
-	res, err := req.Send(ctx)
-	return res.ScanOutput, err
+	res, err := dynamodbClient.Scan(ctx, input)
+	return res, err
 }
 
-func put(ctx context.Context, tableName string, av map[string]dynamodb.AttributeValue) error {
+func put(ctx context.Context, tableName string, av map[string]dynamodbtypes.AttributeValue) error {
 	if dynamodbClient == nil {
-		dynamodbClient = dynamodb.New(cfg)
+		dynamodbClient = dynamodb.NewFromConfig(getConfig(ctx))
 	}
 	input := &dynamodb.PutItemInput{
 		Item:      av,
 		TableName: aws.String(tableName),
 	}
-	req := dynamodbClient.PutItemRequest(input)
-	_, err := req.Send(ctx)
+	_, err := dynamodbClient.PutItem(ctx, input)
 	return err
 }
 
-func update(ctx context.Context, tableName string, an map[string]string, av map[string]dynamodb.AttributeValue, key map[string]dynamodb.AttributeValue, updateExpression string) error {
+func update(ctx context.Context, tableName string, an map[string]string, av map[string]dynamodbtypes.AttributeValue, key map[string]dynamodbtypes.AttributeValue, updateExpression string) error {
 	if dynamodbClient == nil {
-		dynamodbClient = dynamodb.New(cfg)
+		dynamodbClient = dynamodb.NewFromConfig(getConfig(ctx))
 	}
 	input := &dynamodb.UpdateItemInput{
 		ExpressionAttributeNames: an,
 		ExpressionAttributeValues: av,
 		TableName: aws.String(tableName),
 		Key: key,
-		ReturnValues:     dynamodb.ReturnValueUpdatedNew,
+		ReturnValues:     dynamodbtypes.ReturnValueUpdatedNew,
 		UpdateExpression: aws.String(updateExpression),
 	}
 
-	req := dynamodbClient.UpdateItemRequest(input)
-	_, err := req.Send(ctx)
+	_, err := dynamodbClient.UpdateItem(ctx, input)
 	return err
 }
 
-func getImgCount(ctx context.Context, imgTableName string)(*int64, error)  {
+func getImgCount(ctx context.Context, imgTableName string)(int32, error)  {
 	filt := expression.NotEqual(expression.Name("status"), expression.Value(-1))
 	proj := expression.NamesList(expression.Name("img_id"), expression.Name("status"), expression.Name("url"), expression.Name("updated"))
 	result, err := scan(ctx, imgTableName, filt, proj)
 	if err != nil {
-		return nil, err
+		return int32(0), err
 	}
 	return result.ScannedCount, nil
 }
@@ -332,13 +325,13 @@ func putImg(ctx context.Context, imgTableName string, url string, name string) e
 		return err
 	}
 	item := ImgData {
-		Img_Id: int(*count) + 1,
+		Img_Id: int(count) + 1,
 		Name: name,
 		Status: 0,
 		Url: url,
 		Updated: t.Format(layout),
 	}
-	av, err := dynamodbattribute.MarshalMap(item)
+	av, err := attributevalue.MarshalMap(item)
 	if err != nil {
 		return err
 	}
@@ -360,7 +353,7 @@ func getImage(ctx context.Context, imgTableName string, username string)(string,
 	var imgDataList []ImgData
 	for _, i := range result.Items {
 		item := ImgData{}
-		err = dynamodbattribute.UnmarshalMap(i, &item)
+		err = attributevalue.UnmarshalMap(i, &item)
 		if err != nil {
 			log.Println(err)
 		} else {
@@ -399,9 +392,9 @@ func uploadImage(ctx context.Context, imgTableName string, bucketName string, fi
 		return "", errors.New("this extension is invalid")
 	}
 	filename_ := string([]rune(filename)[:(len(filename) - len(extension))]) + t.Format(layout2) + extension
-	uploader := s3manager.NewUploader(cfg)
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		ACL: s3.ObjectCannedACLPublicRead,
+	uploader := s3manager.NewUploader(s3.NewFromConfig(getConfig(ctx)))
+	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
+		ACL: s3types.ObjectCannedACLPublicRead,
 		Bucket: aws.String(bucketName),
 		Key: aws.String(filename_),
 		Body: bytes.NewReader(data),
@@ -416,13 +409,13 @@ func uploadImage(ctx context.Context, imgTableName string, bucketName string, fi
 	return imgUrl, nil
 }
 
-func init() {
+func getConfig(ctx context.Context) aws.Config {
 	var err error
-	cfg, err = external.LoadDefaultAWSConfig()
-	cfg.Region = os.Getenv("REGION")
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(os.Getenv("REGION")))
 	if err != nil {
 		log.Print(err)
 	}
+	return cfg
 }
 
 func main() {
