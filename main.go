@@ -5,6 +5,7 @@ import (
 	"os"
 	"log"
 	"bytes"
+	"embed"
 	"context"
 	"html/template"
 	"github.com/aws/aws-lambda-go/events"
@@ -17,6 +18,9 @@ type PageData struct {
 }
 
 type Response events.APIGatewayProxyResponse
+
+//go:embed templates
+var templateFS embed.FS
 
 const title string = "Sample Account Page"
 
@@ -37,15 +41,15 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	dat.Title = title
 	dat.ApiPath = os.Getenv("API_PATH")
 	if page == "signup" {
-		tmp = template.Must(template.New("").Funcs(funcMap).ParseFiles("templates/index.html", "templates/view.html", "templates/header.html", "templates/signup.html", "templates/passwarning.html"))
+		tmp = template.Must(template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/index.html", "templates/view.html", "templates/header.html", "templates/signup.html", "templates/passwarning.html"))
 	} else if page == "activation" {
-		tmp = template.Must(template.New("").Funcs(funcMap).ParseFiles("templates/index.html", "templates/view.html", "templates/header.html", "templates/activation.html"))
+		tmp = template.Must(template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/index.html", "templates/view.html", "templates/header.html", "templates/activation.html"))
 	} else if page == "profile" {
-		tmp = template.Must(template.New("").Funcs(funcMap).ParseFiles("templates/index.html", "templates/view.html", "templates/header.html", "templates/profile.html"))
+		tmp = template.Must(template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/index.html", "templates/view.html", "templates/header.html", "templates/profile.html"))
 	} else if page == "changepass" {
-		tmp = template.Must(template.New("").Funcs(funcMap).ParseFiles("templates/index.html", "templates/view.html", "templates/header.html", "templates/changepass.html", "templates/passwarning.html"))
+		tmp = template.Must(template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/index.html", "templates/view.html", "templates/header.html", "templates/changepass.html", "templates/passwarning.html"))
 	} else {
-		tmp = template.Must(template.New("").Funcs(funcMap).ParseFiles("templates/index.html", "templates/view.html", "templates/header.html", "templates/login.html"))
+		tmp = template.Must(template.New("").Funcs(funcMap).ParseFS(templateFS, "templates/index.html", "templates/view.html", "templates/header.html", "templates/login.html"))
 	}
 	if e := tmp.ExecuteTemplate(fw, "base", dat); e != nil {
 		log.Fatal(e)
