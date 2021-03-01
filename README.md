@@ -21,11 +21,11 @@ Related with GitHub App.
 
 ## SetUp Step
 - Deploy 1st Step
-- Create a GitHub OAuth App (instructions)[https://docs.github.com/en/developers/apps/creating-an-oauth-app], with the following settings:
+- Create a GitHub OAuth App [instructions](https://docs.github.com/en/developers/apps/creating-an-oauth-app), with the following settings:
   - Authorization callback URL: https://`<Your Cognito Domain>`/oauth2/idpresponse
   - Note down the Client ID and secret
 - Deploy 2nd Step
-- Configure the OIDC integration in AWS console for Cognito (these instructions)[https://docs.aws.amazon.com/ja_jp/cognito/latest/developerguide/cognito-user-pools-oidc-idp.html].
+- Configure the OIDC integration in AWS console for Cognito [these instructions](https://docs.aws.amazon.com/ja_jp/cognito/latest/developerguide/cognito-user-pools-oidc-idp.html).
 - Deploy 3rd Step
 - Edit App Client Callback-URL
 
