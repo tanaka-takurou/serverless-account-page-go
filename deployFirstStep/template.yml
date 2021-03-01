@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless Account Page
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: 'ServerlessAccountPage'
+  UserPoolClientName:
+    Type: String
+    Default: 'GitHubOpenIdAuthClient'
+  UserPoolDefaultDomainPrefixName:
+    Type: String
+    Default: 'test-user-pool-domain2021'
+  UserPoolClientCallbackURL:
+    Type: String
+    Default: ''
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+        UnusedAccountValidityDays: 7
+      AutoVerifiedAttributes:
+        - 'email'
+      MfaConfiguration: 'OFF'
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Ref UserPoolClientName
+      AllowedOAuthFlows:
+        - 'implicit'
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - 'openid'
+      ExplicitAuthFlows:
+        - 'ALLOW_REFRESH_TOKEN_AUTH'
+      GenerateSecret: false
+      CallbackURLs:
+        - !Ref UserPoolClientCallbackURL
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Ref UserPoolDefaultDomainPrefixName
+
+Outputs:
+  APIURI:
+    Description: "Amazon Cognito Domain"
+    Value: !Join [ '', [ 'https://', !Ref UserPoolDomain, '.auth.', !Ref 'AWS::Region', '.amazoncognito.com'] ]

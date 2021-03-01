@@ -6,6 +6,8 @@
 
 packaged.yml
 go.sum
+*jwtRS256.key*
+*view.html
 
 out.json
 

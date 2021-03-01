@@ -27,10 +27,6 @@ func HandleRequest(ctx context.Context, request events.APIGatewayProxyRequest) (
 	page := q["page"]
 	funcMap := template.FuncMap{
 		"safehtml": func(text string) template.HTML { return template.HTML(text) },
-		"add": func(a, b int) int { return a + b },
-		"sub": func(a, b int) int { return a - b },
-		"mul": func(a, b int) int { return a * b },
-		"div": func(a, b int) int { return a / b },
 	}
 	buf := new(bytes.Buffer)
 	fw := io.Writer(buf)

@@ -1,0 +1,33 @@
+{{define "base"}}
+<!doctype html>
+<html>
+  <head>
+{{template "headtag" .}}
+  </head>
+  <body>
+    <h1 class="ui center aligned header">Cognito OpenId</h1>
+    <div class="ui container">
+      <form id="login" class="ui segment" name="login" method="get" action="{{ .CognitoUrl | safehtml }}/login">
+        <div class="content">
+          <div class="ui form">
+            <div class="field">
+              <div id="submit" class="ui black button submitbutton" onclick="loginFormSubmit()">
+                <i class="github icon"></i>
+                GitHub Login
+              </div>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" name="scope" value="openid">
+        <input type="hidden" name="client_id" value="{{ .ClientId }}">
+        <input type="hidden" name="redirect_uri" id="redirect_uri">
+        <input type="hidden" name="response_type" value="token">
+      </form>
+    </div>
+    <div id="warning" class="ui hidden warning message"></div>
+    <div id="info" class="ui hidden info message">
+      <p id="result"></p>
+    </div>
+  </body>
+</html>
+{{end}}

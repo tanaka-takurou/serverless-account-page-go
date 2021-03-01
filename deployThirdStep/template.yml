@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless Cognito OpenId FrontPage
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: 'ServerlessCognitoOpenIdFrontPage'
+  CognitoUrl:
+    Type: String
+    Default: 'https://your-domain-prefix.auth.your-region.amazoncognito.com'
+  CognitoClientId:
+    Type: String
+    Default: 'abc012'
+
+Resources:
+  FrontPageApi:
+    Type: AWS::Serverless::HttpApi
+  FrontPageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ServerlessCognitoOpenIdFrontFunction
+      CodeUri: bin/
+      Handler: main
+      MemorySize: 256
+      Runtime: go1.x
+      Description: 'Cognito OpenId Front Function'
+      Environment:
+        Variables:
+          REGION: !Ref 'AWS::Region'
+          COGNITO_URL: !Ref CognitoUrl
+          COGNITO_CLIENT_ID: !Ref CognitoClientId
+      Events:
+        FrontPageApi:
+          Type: HttpApi
+          Properties:
+            Path: '/'
+            Method: get
+            ApiId: !Ref FrontPageApi
+        FrontProxyApi:
+          Type: HttpApi
+          Properties:
+            Path: '/{proxy+}'
+            Method: get
+            ApiId: !Ref FrontPageApi
+
+Outputs:
+  APIURI:
+    Description: "URI"
+    Value: !Join [ '', [ 'https://', !Ref FrontPageApi, '.execute-api.',!Ref 'AWS::Region','.amazonaws.com/'] ]

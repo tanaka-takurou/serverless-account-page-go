@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless Cognito GitHub OpenId Page
+
+Globals:
+  Function:
+    Runtime: go1.x
+    Timeout: 15
+    Environment:
+      Variables:
+        REGION: !Ref 'AWS::Region'
+        ALGORITHM: !Ref Algorithm
+        KEY_ID: !Ref KeyId
+        CERT_PATH: !Ref CertPath
+        PUB_KEY_PATH: !Ref PubKeyPath
+        GITHUB_CLIENT_ID: !Ref GitHubClientId
+        GITHUB_CLIENT_SECRET: !Ref GitHubClientSecret
+        COGNITO_REDIRECT_URI: !Ref CognitoRedirectUri
+        GITHUB_API_URL: !Ref GitHubUrl
+        GITHUB_LOGIN_URL: !Ref GitHubLoginUrl
+
+Parameters:
+  GitHubClientId:
+    Type: String
+  GitHubClientSecret:
+    Type: String
+  CognitoRedirectUri:
+    Type: String
+  GitHubUrl:
+    Type: String
+    Default: "https://api.github.com"
+    MinLength: 1
+  GitHubLoginUrl:
+    Type: String
+    Default: "https://github.com/login"
+    MinLength: 1
+  StageName:
+    Type: String
+    Default: "CognitoGitHubApiStage"
+  StageName:
+    Type: String
+    Default: "CognitoGitHubApiStage"
+  CertPath:
+    Type: String
+    Default: "jwtRS256.key"
+  PubKeyPath:
+    Type: String
+    Default: "jwtRS256.key.pub"
+  Algorithm:
+    Type: String
+    Default: "RS256"
+  KeyId:
+    Type: String
+    Default: "jwtRS256"
+
+Resources:
+  GithubOAuthApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref StageName
+      OpenApiVersion: "2.0"
+  OpenIdDiscovery:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/discovery/bin/
+      Handler: main
+      MemorySize: 256
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /.well-known/openid-configuration
+            Method: get
+            RestApiId: !Ref GithubOAuthApi
+  Authorize:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/authorize/bin/
+      Handler: main
+      MemorySize: 256
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /authorize
+            Method: get
+            RestApiId: !Ref GithubOAuthApi
+  Token:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/token/bin/
+      Handler: main
+      MemorySize: 256
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /token
+            Method: get
+            RestApiId: !Ref GithubOAuthApi
+        PostResource:
+          Type: Api
+          Properties:
+            Path: /token
+            Method: post
+            RestApiId: !Ref GithubOAuthApi
+  UserInfo:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/userinfo/bin/
+      Handler: main
+      MemorySize: 256
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /userinfo
+            Method: get
+            RestApiId: !Ref GithubOAuthApi
+        PostResource:
+          Type: Api
+          Properties:
+            Path: /userinfo
+            Method: post
+            RestApiId: !Ref GithubOAuthApi
+  Jwks:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/jwks/bin/
+      Handler: main
+      MemorySize: 256
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            Path: /.well-known/jwks.json
+            Method: get
+            RestApiId: !Ref GithubOAuthApi
+
+Outputs:
+    CognitoGitHub:
+      Description: "Cognito GitHub Api URL"
+      Value: !Sub "https://${GithubOAuthApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}"
