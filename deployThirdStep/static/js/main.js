@@ -4,7 +4,7 @@ var loginFormSubmit = function() {
 };
 var logoutFormSubmit = function() {
 	document.getElementById("logout_uri").value = location.origin;
-	document.login.submit();
+	document.logout.submit();
 };
 var postRequest = function(url, data, headers, callback, onerror) {
   $.ajax({
