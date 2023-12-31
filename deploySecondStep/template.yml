@@ -4,7 +4,9 @@ Description: Serverless Cognito GitHub OpenId Page
 
 Globals:
   Function:
-    Runtime: go1.x
+    Architectures:
+    - arm64
+    Runtime: provided.al2
     Timeout: 15
     Environment:
       Variables:
@@ -60,7 +62,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/discovery/bin/
-      Handler: main
+      Handler: bootstrap
       MemorySize: 256
       Events:
         GetResource:
@@ -73,7 +75,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/authorize/bin/
-      Handler: main
+      Handler: bootstrap
       MemorySize: 256
       Events:
         GetResource:
@@ -86,7 +88,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/token/bin/
-      Handler: main
+      Handler: bootstrap
       MemorySize: 256
       Events:
         GetResource:
@@ -105,7 +107,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/userinfo/bin/
-      Handler: main
+      Handler: bootstrap
       MemorySize: 256
       Events:
         GetResource:
@@ -124,7 +126,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/jwks/bin/
-      Handler: main
+      Handler: bootstrap
       MemorySize: 256
       Events:
         GetResource:

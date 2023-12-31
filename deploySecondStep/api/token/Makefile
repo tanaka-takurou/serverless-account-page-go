@@ -8,4 +8,4 @@ clean:
 build:
 	mkdir -p bin
 	cp jwtRS256.key bin/
-	GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/main
+	GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/bootstrap
